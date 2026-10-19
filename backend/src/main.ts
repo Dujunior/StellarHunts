@@ -7,6 +7,7 @@ import { DOCS_ROUTE_EXCLUSIONS, buildApiPrefix } from './api-prefix';
 import { API_DOC_PATH, buildSwaggerConfig } from './swagger';
 import { securityHeadersConfig } from './security-headers';
 import { setupSwagger } from './swagger';
+import { RequestTraceInterceptor } from './common/interceptors/request-trace.interceptor';
 
 /**
  * Hard limit (ms) we allow the graceful shutdown sequence to take before
@@ -32,6 +33,12 @@ async function bootstrap(): Promise<void> {
   });
   app.use(helmet());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Issue #753: Apply structured request tracing globally.
+  // Every request receives a UUID trace ID (X-Trace-Id header) and emits
+  // JSON-structured incoming_request / outgoing_response log events.
+  // Sampling is controlled via LOG_SAMPLE_RATE env var (0–1, default 1).
+  app.useGlobalInterceptors(new RequestTraceInterceptor());
 
   // Respect `appConfig.swagger.enabled` (see backend/config/app.config.ts):
   // the UI is mounted in development but stays off by default in
